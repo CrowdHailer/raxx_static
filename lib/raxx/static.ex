@@ -39,6 +39,15 @@ defmodule Raxx.Static do
     {static_dir, []} = Module.eval_quoted(__CALLER__, static_dir)
     # If a relative path is given expand in relation to the callers file
     static_dir = Path.expand(static_dir, Path.dirname(__CALLER__.file))
+
+    quote do
+      @raxx_static_dir unquote(static_dir)
+      @before_compile unquote(__MODULE__)
+    end
+  end
+  defmacro __before_compile__(_env) do
+    {static_dir, []} = Module.eval_quoted(__CALLER__, (quote do: @raxx_static_dir))
+
     pattern = "./**/*.*"
     filepaths = Path.wildcard(Path.expand(pattern, static_dir))
 
@@ -66,13 +75,13 @@ defmodule Raxx.Static do
     end
 
     quote do
+      defoverridable [handle_head: 2]
+
       @impl Raxx.Server
       unquote(routes_ast)
       def handle_head(request, config) do
         super(request, config)
       end
-
-      defoverridable [handle_head: 2]
     end
   end
 end

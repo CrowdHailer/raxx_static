@@ -4,7 +4,7 @@ defmodule RaxxStatic.MixProject do
   def project do
     [
       app: :raxx_static,
-      version: "0.6.0",
+      version: "0.6.1",
       elixir: "~> 1.5",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -25,7 +25,7 @@ defmodule RaxxStatic.MixProject do
 
   defp deps do
     [
-      {:raxx, "~> 0.14.2"},
+      {:raxx, "~> 0.15.2"},
       {:mime, "~> 1.1"},
       {:ex_doc, ">= 0.0.0", only: :dev}
     ]

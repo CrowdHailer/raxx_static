@@ -1,6 +1,11 @@
 defmodule Raxx.StaticTest do
   defmodule SingleFile do
     use Raxx.Server
+    @impl Raxx.Server
+    def handle_request(_, _) do
+      response(:ok)
+    end
+
     use Raxx.Static, "./public"
   end
 
@@ -49,5 +54,4 @@ defmodule Raxx.StaticTest do
     response = SingleFile.handle_head(request, [])
     assert 200 == response.status
   end
-
 end

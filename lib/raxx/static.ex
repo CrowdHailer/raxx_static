@@ -45,40 +45,48 @@ defmodule Raxx.Static do
       @before_compile unquote(__MODULE__)
     end
   end
+
   defmacro __before_compile__(_env) do
-    {static_dir, []} = Module.eval_quoted(__CALLER__, (quote do: @raxx_static_dir))
+    {static_dir, []} = Module.eval_quoted(__CALLER__, quote(do: @raxx_static_dir))
 
     pattern = "./**/*.*"
     filepaths = Path.wildcard(Path.expand(pattern, static_dir))
 
-    actions = Enum.flat_map(filepaths, fn
-      (filepath) ->
+    actions =
+      Enum.flat_map(filepaths, fn filepath ->
         case File.read(filepath) do
           {:ok, content} ->
             mime = MIME.from_path(filepath)
-            route = Path.relative_to(filepath, static_dir) |> Path.split
-            response = Raxx.response(:ok)
-            |> Raxx.set_header("content-length", "#{:erlang.iolist_size(content)}")
-            |> Raxx.set_header("content-type", mime)
-            |> Raxx.set_body(content)
+            route = Path.relative_to(filepath, static_dir) |> Path.split()
+
+            response =
+              Raxx.response(:ok)
+              |> Raxx.set_header("content-length", "#{:erlang.iolist_size(content)}")
+              |> Raxx.set_header("content-type", mime)
+              |> Raxx.set_body(content)
+
             [{route, response}]
+
           {:error, :eisdir} ->
             []
         end
-    end)
-    routes_ast = for {route, response} <- actions do
-      quote do
-        def handle_head(%{method: :GET, path: unquote(route)}, _) do
-          unquote(Macro.escape(response))
+      end)
+
+    routes_ast =
+      for {route, response} <- actions do
+        quote do
+          def handle_head(%{method: :GET, path: unquote(route)}, _) do
+            unquote(Macro.escape(response))
+          end
         end
       end
-    end
 
     quote do
-      defoverridable [handle_head: 2]
+      defoverridable handle_head: 2
 
       @impl Raxx.Server
       unquote(routes_ast)
+
       def handle_head(request, config) do
         super(request, config)
       end

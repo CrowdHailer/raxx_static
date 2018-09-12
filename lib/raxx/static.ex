@@ -61,7 +61,6 @@ defmodule Raxx.Static do
 
             response =
               Raxx.response(:ok)
-              |> Raxx.set_header("content-length", "#{:erlang.iolist_size(content)}")
               |> Raxx.set_header("content-type", mime)
               |> Raxx.set_body(content)
 

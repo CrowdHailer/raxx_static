@@ -21,7 +21,7 @@ defmodule MyApp.WWW do
   use Raxx.Static, "./public"
 
   @impl Raxx.Server
-  def handle_request(request, state) do
+  def handle_head(request, state) do
   # ...
 end
 ```

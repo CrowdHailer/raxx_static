@@ -1,7 +1,8 @@
 defmodule Raxx.StaticTest do
   defmodule SingleFile do
-    use Raxx.Server
-    @impl Raxx.Server
+    use Raxx.SimpleServer
+
+    @impl Raxx.SimpleServer
     def handle_request(_, _) do
       response(:ok)
     end

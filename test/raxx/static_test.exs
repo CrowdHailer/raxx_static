@@ -53,4 +53,23 @@ defmodule Raxx.StaticTest do
 
     assert response.status == 204
   end
+
+  test "setup options can be passed to the middleware" do
+    stack =
+      Raxx.Stack.new(
+        [
+          {Raxx.Static, source: Path.join(__DIR__, "public")}
+        ],
+        {MyApp, nil}
+      )
+
+    request = Raxx.request(:GET, "/hello.txt")
+
+    {[response], _} = Raxx.Server.handle_head(stack, request)
+
+    assert response.status == 200
+    assert response.body == "Hello, World!\n"
+    assert Raxx.get_content_length(response) == 14
+    assert Raxx.get_header(response, "content-type") == "text/plain"
+  end
 end

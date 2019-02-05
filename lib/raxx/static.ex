@@ -31,6 +31,7 @@ defmodule Raxx.Static do
   - static_content(content, mime)
   - check trying to serve root file
   - use plug semantics of {:app, path/in/priv} or "/binary/absoulte" or "./binary/from/file"
+  - Passing options to the middleware reads the entire source directory on every request!
   """
   use Raxx.Middleware
   alias Raxx.Server
@@ -92,7 +93,7 @@ defmodule Raxx.Static do
     end
   end
 
-  defp match_request(_request, _state) do
-    :none
+  defp match_request(request, options) when is_list(options) do
+    match_request(request, setup(options))
   end
 end

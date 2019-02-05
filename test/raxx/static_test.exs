@@ -1,58 +1,75 @@
 defmodule Raxx.StaticTest do
-  defmodule SingleFile do
+  use ExUnit.Case
+
+  defmodule MyApp do
     use Raxx.SimpleServer
 
     @impl Raxx.SimpleServer
-    def handle_request(_, _) do
-      response(:ok)
+    def handle_request(_request, _state) do
+      response(:no_content)
     end
-
-    use Raxx.Static, "./public"
   end
 
-  use ExUnit.Case
-  # TODO test with use macro
-  # TODO set over connection using HTTP client
+  @static_setup Raxx.Static.setup(source: Path.join(__DIR__, "public"))
 
-  test "Correct file contents is served" do
-    request = %Raxx.Request{method: :GET, path: ["hello.txt"]}
-    response = SingleFile.handle_head(request, [])
-    assert "Hello, World!\n" == response.body
+  setup %{} do
+    stack = Raxx.Stack.new([{Raxx.Static, @static_setup}], {MyApp, nil})
+    {:ok, stack: stack}
   end
 
-  test "A file is served with a 200 response" do
-    request = %Raxx.Request{method: :GET, path: ["hello.txt"]}
-    response = SingleFile.handle_head(request, [])
-    assert 200 == response.status
+  test "File content is served", %{stack: stack} do
+    request = Raxx.request(:GET, "/hello.txt")
+
+    {[response], _} = Raxx.Server.handle_head(stack, request)
+
+    assert response.status == 200
+    assert response.body == "Hello, World!\n"
+    assert Raxx.get_content_length(response) == 14
+    assert Raxx.get_header(response, "content-type") == "text/plain"
   end
 
-  test "A file is served with the correct content length" do
-    request = %Raxx.Request{method: :GET, path: ["hello.txt"]}
-    response = SingleFile.handle_head(request, [])
-    assert {"content-length", "14"} == List.keyfind(response.headers, "content-length", 0)
+  test "A css file is served with the correct content type", %{stack: stack} do
+    request = Raxx.request(:GET, "/site.css")
+
+    {[response], _} = Raxx.Server.handle_head(stack, request)
+    assert Raxx.get_header(response, "content-type") == "text/css"
   end
 
-  test "A text file is served with the correct content type" do
-    request = %Raxx.Request{method: :GET, path: ["hello.txt"]}
-    response = SingleFile.handle_head(request, [])
-    assert {"content-type", "text/plain"} == List.keyfind(response.headers, "content-type", 0)
+  test "files in subdirectories are  found", %{stack: stack} do
+    request = Raxx.request(:GET, "/sub/file.txt")
+
+    {[response], _} = Raxx.Server.handle_head(stack, request)
+
+    assert response.status == 200
+    assert response.body == "sub file.\n"
+    assert Raxx.get_content_length(response) == 10
+    assert Raxx.get_header(response, "content-type") == "text/plain"
   end
 
-  test "A css file is served with the correct content type" do
-    request = %Raxx.Request{method: :GET, path: ["site.css"]}
-    response = SingleFile.handle_head(request, [])
-    assert {"content-type", "text/css"} == List.keyfind(response.headers, "content-type", 0)
+  test "request that does not match is passed up the stack", %{stack: stack} do
+    request = Raxx.request(:GET, "/")
+
+    {[response], _} = Raxx.Server.handle_head(stack, request)
+
+    assert response.status == 204
   end
 
-  test "files in subdirectories are  found" do
-    request = %Raxx.Request{method: :GET, path: ["sub", "file.txt"]}
-    response = SingleFile.handle_head(request, [])
-    assert 200 == response.status
-  end
+  test "setup options can be passed to the middleware" do
+    stack =
+      Raxx.Stack.new(
+        [
+          {Raxx.Static, source: Path.join(__DIR__, "public")}
+        ],
+        {MyApp, nil}
+      )
 
-  test "request that does not match is passed up the stack" do
-    request = %Raxx.Request{path: [], method: :GET, body: false}
-    response = SingleFile.handle_head(request, [])
-    assert 200 == response.status
+    request = Raxx.request(:GET, "/hello.txt")
+
+    {[response], _} = Raxx.Server.handle_head(stack, request)
+
+    assert response.status == 200
+    assert response.body == "Hello, World!\n"
+    assert Raxx.get_content_length(response) == 14
+    assert Raxx.get_header(response, "content-type") == "text/plain"
   end
 end

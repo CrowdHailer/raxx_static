@@ -17,11 +17,29 @@ Add routes for static assets to any server module.
 
 ```elixir
 defmodule MyApp.WWW do
-  use Raxx.Server
-  use Raxx.Static, "./public"
+  def start_link(config, server_options) do
+    stack =
+      Raxx.Stack.new(
+        [
+          {Raxx.Static, source: "dir/of/public/content"}
+          # Other middleware
+        ],
+        {MyApp.WWW.Router, config}
+      )
 
-  @impl Raxx.Server
-  def handle_head(request, state) do
-  # ...
+    Ace.HTTP.Service.start_link(stack, server_options)
+  end
 end
+```
+
+### Read files at compile time.
+
+To read source files only once use `Raxx.Static.setup/1`.
+This takes the same arguments as above.
+
+```elixir
+@static_setup Raxx.Static.setup(source: "dir/of/public/content")
+
+# in stack
+{Raxx.Static, @static_setup}
 ```

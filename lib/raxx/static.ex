@@ -2,20 +2,18 @@ defmodule Raxx.Static do
   @moduledoc """
   Serve the contents of a directory as static content.
 
-      defmodule MyApp do
-        use Raxx.Server
-        use Raxx.Router, [
-          {%{method: :GET, path: []}, MyApp.HomePage}
-        ]
-        use Raxx.Static, "./public"
-      end
+      @static_setup Raxx.Static.setup(source: "path/to/assets")
 
-  *If the path given to `Raxx.Static` is relative,
-  it will be expanded relative to the file using `Raxx.Static`
+      stack =
+        Raxx.Stack.new(
+          [
+            {Middleware.Static, @static_state}
+          ],
+          {MyApp, config}
+        )
 
-  Using `Raxx.Static` writes a route for each file in the given directory.
-  If a request does not match any of these paths it will be passed up the stack.
-  In this example if a request does not match content in the public dir it will then be passed to the router
+  Use `setup/1` at compile time so that files are read only once.
+  Raxx.Static should not be used for serving large files.
 
   #### Extensions
 
@@ -33,62 +31,69 @@ defmodule Raxx.Static do
   - static_content(content, mime)
   - check trying to serve root file
   - use plug semantics of {:app, path/in/priv} or "/binary/absoulte" or "./binary/from/file"
+  - Passing options to the middleware reads the entire source directory on every request!
   """
-  defmacro __using__(static_dir) do
-    # Expand whatever the user has done to their path
-    {static_dir, []} = Module.eval_quoted(__CALLER__, static_dir)
-    # If a relative path is given expand in relation to the callers file
-    static_dir = Path.expand(static_dir, Path.dirname(__CALLER__.file))
+  use Raxx.Middleware
+  alias Raxx.Server
+  @default_pattern "./**/*.*"
 
-    quote do
-      @raxx_static_dir unquote(static_dir)
-      @before_compile unquote(__MODULE__)
+  @enforce_keys [:matches]
+  defstruct @enforce_keys
+
+  def setup(options) do
+    {:ok, source_directory} = Keyword.fetch(options, :source)
+    pattern = Keyword.get(options, :pattern, @default_pattern)
+
+    matches = build_matches(source_directory, pattern)
+
+    %__MODULE__{matches: matches}
+  end
+
+  def process_head(request, state, next) do
+    case match_request(request, state) do
+      :none ->
+        {parts, next} = Server.handle_head(next, request)
+        {parts, state, next}
+
+      response ->
+        {[response], state, next}
     end
   end
 
-  defmacro __before_compile__(_env) do
-    {static_dir, []} = Module.eval_quoted(__CALLER__, quote(do: @raxx_static_dir))
+  defp build_matches(source_directory, pattern) do
+    filepaths = Path.wildcard(Path.expand(pattern, source_directory))
 
-    pattern = "./**/*.*"
-    filepaths = Path.wildcard(Path.expand(pattern, static_dir))
+    Enum.flat_map(filepaths, fn filepath ->
+      case File.read(filepath) do
+        {:ok, content} ->
+          mime = MIME.from_path(filepath)
+          route = Path.relative_to(filepath, source_directory) |> Path.split()
 
-    actions =
-      Enum.flat_map(filepaths, fn filepath ->
-        case File.read(filepath) do
-          {:ok, content} ->
-            mime = MIME.from_path(filepath)
-            route = Path.relative_to(filepath, static_dir) |> Path.split()
+          response =
+            Raxx.response(:ok)
+            |> Raxx.set_header("content-type", mime)
+            |> Raxx.set_body(content)
 
-            response =
-              Raxx.response(:ok)
-              |> Raxx.set_header("content-type", mime)
-              |> Raxx.set_body(content)
+          [{route, response}]
 
-            [{route, response}]
-
-          {:error, :eisdir} ->
-            []
-        end
-      end)
-
-    routes_ast =
-      for {route, response} <- actions do
-        quote do
-          def handle_head(%{method: :GET, path: unquote(route)}, _) do
-            unquote(Macro.escape(response))
-          end
-        end
+        {:error, :eisdir} ->
+          []
       end
+    end)
+    |> Enum.into(%{})
+  end
 
-    quote do
-      defoverridable handle_head: 2
+  defp match_request(%{method: :GET, path: segments}, %__MODULE__{matches: matches}) do
+    case Map.fetch(matches, segments) do
+      {:ok, response} ->
+        response
 
-      @impl Raxx.Server
-      unquote(routes_ast)
-
-      def handle_head(request, config) do
-        super(request, config)
-      end
+      :error ->
+        :none
     end
+  end
+
+  defp match_request(request, options) when is_list(options) do
+    match_request(request, setup(options))
   end
 end

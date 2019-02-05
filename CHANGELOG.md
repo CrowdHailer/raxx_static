@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.8.0](https://github.com/CrowdHailer/raxx_static/tree/0.8.0) - 2019-01-05
+
+### Changed
+
+- Complete rewrite to use `Raxx.Middleware` behaviour, instead of a macro based implementation.
+
 ## [0.7.0](https://github.com/CrowdHailer/raxx_static/tree/0.7.0) - 2018-10-28
 
 ### Changed

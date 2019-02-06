@@ -54,6 +54,14 @@ defmodule Raxx.StaticTest do
     assert response.status == 204
   end
 
+  test "request for different method is passed up the stack", %{stack: stack} do
+    request = Raxx.request(:POST, "/hello.txt")
+
+    {[response], _} = Raxx.Server.handle_head(stack, request)
+
+    assert response.status == 204
+  end
+
   test "setup options can be passed to the middleware" do
     stack =
       Raxx.Stack.new(

@@ -93,6 +93,10 @@ defmodule Raxx.Static do
     end
   end
 
+  defp match_request(_request, %__MODULE__{}) do
+    :none
+  end
+
   defp match_request(request, options) when is_list(options) do
     match_request(request, setup(options))
   end

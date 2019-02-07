@@ -5,11 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.8.1](https://github.com/CrowdHailer/raxx_static/tree/0.8.1) - 2019-01-06
+## [0.8.1](https://github.com/CrowdHailer/raxx_static/tree/0.8.1) - 2019-01-07
 
 ### Fixed
 
-- Requests with method other than GET are passed up the stack
+- Requests with method other than GET are passed up the stack.
 
 ## [0.8.0](https://github.com/CrowdHailer/raxx_static/tree/0.8.0) - 2019-01-05
 

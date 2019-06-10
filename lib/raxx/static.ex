@@ -83,7 +83,7 @@ defmodule Raxx.Static do
     |> Enum.into(%{})
   end
 
-  defp match_request(%{method: :GET, path: segments}, %__MODULE__{matches: matches}) do
+  def match_request(%{method: :GET, path: segments}, %__MODULE__{matches: matches}) do
     case Map.fetch(matches, segments) do
       {:ok, response} ->
         response
@@ -93,11 +93,11 @@ defmodule Raxx.Static do
     end
   end
 
-  defp match_request(_request, %__MODULE__{}) do
+  def match_request(_request, %__MODULE__{}) do
     :none
   end
 
-  defp match_request(request, options) when is_list(options) do
+  def match_request(request, options) when is_list(options) do
     match_request(request, setup(options))
   end
 end
